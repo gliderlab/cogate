@@ -382,11 +382,38 @@ func channelTypeFromString(s string) channels.ChannelType {
 
 // Locate gateway directory
 func getGatewayDir() string {
+	if env := os.Getenv("OPENCLAW_GATEWAY_DIR"); env != "" {
+		return env
+	}
+
+	isValid := func(dir string) bool {
+		if _, err := os.Stat(filepath.Join(dir, "static", "index.html")); err == nil {
+			return true
+		}
+		return false
+	}
+
 	execPath, _ := os.Executable()
+	if execPath != "" {
+		execDir := filepath.Dir(execPath)
+		candidates := []string{
+			filepath.Join(execDir, "gateway"),
+			filepath.Join(filepath.Dir(execDir), "gateway"),
+		}
+		for _, c := range candidates {
+			if isValid(c) {
+				return c
+			}
+		}
+	}
+	if isValid("/opt/openclaw-go/gateway") {
+		return "/opt/openclaw-go/gateway"
+	}
+	// fallback: keep previous behavior if nothing else matches
 	if execPath != "" {
 		return filepath.Join(filepath.Dir(execPath), "gateway")
 	}
-	return "/opt/openclaw-go/gateway"
+	return "gateway"
 }
 
 // Process handlers
