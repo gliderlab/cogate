@@ -14,45 +14,65 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: '1.21'
-      - name: Install deps (SQLite, toolchain)
+      - name: Install deps (SQLite, FAISS, toolchain)
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential pkg-config libsqlite3-dev
-      - name: Build (lite, no FAISS)
+          sudo apt-get install -y build-essential pkg-config libsqlite3-dev libfaiss-dev
+      - name: Build (with FAISS)
         run: |
-          make build-lite
+          make build
           mkdir -p dist/linux
           cp bin/ocg bin/ocg-gateway bin/ocg-agent bin/ocg-embedding dist/linux/
-      - name: Upload artifacts (Linux)
+      - name: Create Linux zip
+        run: |
+          cd dist/linux
+          powershell -Command "Compress-Archive -Path * -DestinationPath ../ocg-linux-x64.zip -Force"
+          cd ..
+          rm -rf linux
+      - name: Upload Linux artifact
         uses: actions/upload-artifact@v4
         with:
-          name: linux-binaries
-          path: dist/linux/*
+          name: linux-zip
+          path: dist/ocg-linux-x64.zip
 
   build-windows:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Set up MSYS2
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: true
+          install: |
+            mingw-w64-x86_64-gcc
+            mingw-w64-x86_64-sqlite3
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
           go-version: '1.21'
-      - name: Build (CGO disabled, no FAISS)
+      - name: Build with FAISS (MinGW)
         env:
-          CGO_ENABLED: 0
+          CGO_ENABLED: 1
           GOOS: windows
           GOARCH: amd64
+          CC: gcc
         run: |
-          mkdir -p dist\windows
-          go build -o dist\windows\ocg.exe ./cmd/ocg
-          go build -o dist\windows\ocg-gateway.exe ./cmd/gateway
-          go build -o dist\windows\ocg-agent.exe ./cmd/agent
-          go build -o dist\windows\ocg-embedding.exe ./cmd/embedding-server
-      - name: Upload artifacts (Windows)
+          $env:CGO_CFLAGS = "-I/msys64/mingw64/include"
+          $env:CGO_LDFLAGS = "-L/msys64/mingw64/lib -lfaiss -lgomp"
+          go build -o dist\windows\ocg.exe .\cmd\ocg
+          go build -o dist\windows\ocg-gateway.exe .\cmd\gateway
+          go build -o dist\windows\ocg-agent.exe -tags "faiss sqlite_fts5" .\cmd\agent
+          go build -o dist\windows\ocg-embedding.exe .\cmd\embedding-server
+      - name: Create Windows zip
+        run: |
+          Compress-Archive -Path dist\windows\* -DestinationPath dist\ocg-windows-x64.zip -Force
+          Remove-Item -Path dist\windows\* -Recurse -Force
+      - name: Upload Windows artifact
         uses: actions/upload-artifact@v4
         with:
-          name: windows-binaries
-          path: dist/windows/*
+          name: windows-zip
+          path: dist/ocg-windows-x64.zip
 
   release:
     needs: [build-linux, build-windows]
@@ -60,22 +80,22 @@ jobs:
     permissions:
       contents: write
     steps:
-      - name: Download Linux artifacts
+      - name: Download Linux artifact
         uses: actions/download-artifact@v4
         with:
-          name: linux-binaries
-          path: dist/linux
-      - name: Download Windows artifacts
+          name: linux-zip
+          path: dist
+      - name: Download Windows artifact
         uses: actions/download-artifact@v4
         with:
-          name: windows-binaries
-          path: dist/windows
+          name: windows-zip
+          path: dist
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            dist/linux/*
-            dist/windows/*
+            dist/ocg-linux-x64.zip
+            dist/ocg-windows-x64.zip
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
