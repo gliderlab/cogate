@@ -117,6 +117,6 @@ fi
 # Build all (root Makefile already enables FAISS + FTS5)
 make build-all LLAMA_JOBS="$LLAMA_JOBS" BUILD_SHARED_LIBS="$BUILD_SHARED_LIBS" BUILD_TYPE="$BUILD_TYPE" LLAMA_STATIC="$LLAMA_STATIC"
 
-echo "✅ build done: bin/ocg-gateway bin/ocg-agent bin/ocg-embedding bin/llama-server"
+echo "✅ build done: bin/ocg bin/ocg-gateway bin/ocg-agent bin/ocg-embedding bin/llama-server"
 echo "LLAMA_STATIC=$LLAMA_STATIC, BUILD_SHARED_LIBS=$BUILD_SHARED_LIBS"
-echo "Start: cd $OCG_DIR && ./bin/ocg-gateway"
+echo "Start: cd $OCG_DIR && ./bin/ocg start"
