@@ -14,13 +14,19 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: '1.21'
-      - name: Install deps (SQLite, toolchain, zip)
+      - name: Install deps (SQLite, FAISS, toolchain, zip)
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential pkg-config libsqlite3-dev zip
-      - name: Build (lite, no FAISS)
+          sudo apt-get install -y build-essential pkg-config libsqlite3-dev libfaiss-dev zip
+      - name: Build (with FAISS)
         run: |
-          make build-lite
+          make build-ocg
+          make build-gateway
+          make build-embedding
+          CGO_CFLAGS="-DSQLITE_ENABLE_FTS5" \
+          CGO_CXXFLAGS="-I/usr/include" \
+          CGO_LDFLAGS="-lfaiss -lgomp -lblas -llapack" \
+          go build -tags "faiss sqlite_fts5" -o bin/ocg-agent ./cmd/agent/
           mkdir -p dist/linux
           cp bin/ocg bin/ocg-gateway bin/ocg-agent bin/ocg-embedding dist/linux/
       - name: Create Linux zip
