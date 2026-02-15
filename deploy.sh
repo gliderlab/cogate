@@ -43,14 +43,29 @@ apt-get install -y \
   libsqlite3-dev \
   libfaiss-dev libfaiss-openmp-dev
 
-# Fresh checkout
-if [ -d "$OCG_DIR" ]; then
-  mv "$OCG_DIR" "${OCG_DIR}.bak.$(date +%s)"
+# Checkout or update
+if [ -d "$OCG_DIR/.git" ]; then
+  cd "$OCG_DIR"
+  git remote set-url origin "$OCG_REPO"
+  git fetch --all --prune
+  git reset --hard origin/main
+else
+  rm -rf "$OCG_DIR"
+  git clone "$OCG_REPO" "$OCG_DIR"
+  cd "$OCG_DIR"
 fi
-git clone "$OCG_REPO" "$OCG_DIR"
-cd "$OCG_DIR"
-rm -rf llama.cpp
-git clone "$LLAMA_REPO" llama.cpp
+
+# Sync llama.cpp
+if [ -d "llama.cpp/.git" ]; then
+  cd llama.cpp
+  git remote set-url origin "$LLAMA_REPO"
+  git fetch --all --prune
+  git reset --hard origin/master
+  cd ..
+else
+  rm -rf llama.cpp
+  git clone "$LLAMA_REPO" llama.cpp
+fi
 
 # Wrapper Makefile for llama.cpp (outputs to ../bin, static/shared selectable)
 cat > llama.cpp/Makefile <<'EOF'
