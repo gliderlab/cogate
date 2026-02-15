@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/rpc"
 	"os"
+	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -99,13 +100,17 @@ func (g *Gateway) Start() error {
 	mux := http.NewServeMux()
 
 	// Static files (web chat UI) embedded in binary
-	staticHandler := embeddedFileServer()
 	log.Printf("Static assets: embedded")
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/" {
-			r.URL.Path = "/index.html"
+			http.ServeFileFS(w, r, embeddedStaticFS, "static/index.html")
+			return
 		}
-		staticHandler.ServeHTTP(w, r)
+		if strings.HasSuffix(r.URL.Path, "/") {
+			r.URL.Path = path.Join(r.URL.Path, "index.html")
+		}
+		// Serve from embedded FS (avoids directory redirects)
+		http.ServeFileFS(w, r, embeddedStaticFS, "static"+r.URL.Path)
 	})
 
 	// WebSocket endpoint for real-time chat
