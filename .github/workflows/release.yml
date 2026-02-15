@@ -39,30 +39,19 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Set up MSYS2
-        uses: msys2/setup-msys2@v2
-        with:
-          msystem: MINGW64
-          update: true
-          install: |
-            mingw-w64-x86_64-gcc
-            mingw-w64-x86_64-sqlite3
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
           go-version: '1.21'
-      - name: Build with FAISS (MinGW)
+      - name: Build (lite, no FAISS)
         env:
-          CGO_ENABLED: 1
+          CGO_ENABLED: 0
           GOOS: windows
           GOARCH: amd64
-          CC: gcc
         run: |
-          $env:CGO_CFLAGS = "-I/msys64/mingw64/include"
-          $env:CGO_LDFLAGS = "-L/msys64/mingw64/lib -lfaiss -lgomp"
           go build -o dist\windows\ocg.exe .\cmd\ocg
           go build -o dist\windows\ocg-gateway.exe .\cmd\gateway
-          go build -o dist\windows\ocg-agent.exe -tags "faiss sqlite_fts5" .\cmd\agent
+          go build -o dist\windows\ocg-agent.exe .\cmd\agent
           go build -o dist\windows\ocg-embedding.exe .\cmd\embedding-server
       - name: Create Windows zip
         run: |
