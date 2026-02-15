@@ -8,7 +8,7 @@ on:
 jobs:
   build-linux:
     runs-on: ubuntu-latest
-    container: debian:trixie
+    container: debian:12
     steps:
       - uses: actions/checkout@v4
       - name: Install CA certs (for setup-go)
@@ -20,11 +20,23 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: '1.21'
-      - name: Install deps (FAISS, SQLite, toolchain, zip)
+      - name: Install deps (build toolchain)
         run: |
           apt-get update
-          apt-get install -y build-essential pkg-config libsqlite3-dev libfaiss-dev \
-            libopenblas-dev liblapack-dev libgomp1 zip
+          apt-get install -y build-essential pkg-config libsqlite3-dev \
+            libopenblas-dev liblapack-dev libgomp1 zip cmake git
+      - name: Build FAISS (source)
+        run: |
+          git clone --depth 1 https://github.com/facebookresearch/faiss.git
+          cmake -S faiss -B faiss/build \
+            -DFAISS_ENABLE_GPU=OFF \
+            -DFAISS_ENABLE_PYTHON=OFF \
+            -DBUILD_SHARED_LIBS=OFF \
+            -DBLA_VENDOR=OpenBLAS \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_INSTALL_PREFIX=/usr/local
+          cmake --build faiss/build --config Release -- -j2
+          cmake --install faiss/build
       - name: Build (FAISS)
         run: |
           make build
