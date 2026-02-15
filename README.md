@@ -133,6 +133,29 @@ EMBEDDING_MODEL_PATH=/path/to/model.gguf
 
 ---
 
+## Deployment
+
+A one-shot `deploy.sh` script is included for Debian/Ubuntu hosts. It installs build dependencies, updates the repo, syncs llama.cpp, and builds binaries.
+
+```bash
+# As root (or sudo -E)
+./deploy.sh
+```
+
+### Deploy Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `LLAMA_JOBS` | 1 | Parallel build jobs for llama.cpp |
+| `LLAMA_STATIC` | OFF | Build llama.cpp static binaries |
+| `BUILD_TYPE` | Release | CMake build type |
+| `USE_SWAP` | on | Auto-create swap if none exists |
+| `SWAP_SIZE` | 4G | Swap size |
+| `OCG_REF` | main | Git ref/branch for this repo |
+| `LLAMA_REF` | master | Git ref/branch for llama.cpp |
+
+---
+
 ## Tools
 
 ### Implemented Tools
