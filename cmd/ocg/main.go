@@ -187,8 +187,8 @@ func startProcess(binDir, cfgDir string, envConfig map[string]string, spec Proce
 	cmd.Stdout = logFile
 	cmd.Stderr = logFile
 	cmd.Env = mergeEnv(envConfig)
-	if runtime.GOOS != "windows" {
-		cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	if cmd.SysProcAttr = getSysProcAttr(); cmd.SysProcAttr == nil {
+		// Skip Setpgid on Windows or if not available
 	}
 
 	if err := cmd.Start(); err != nil {
@@ -466,6 +466,13 @@ func pidAlive(pid int) bool {
 func fatalf(format string, args ...interface{}) {
 	fmt.Fprintf(os.Stderr, format+"\n", args...)
 	os.Exit(1)
+}
+
+func getSysProcAttr() *syscall.SysProcAttr {
+	if runtime.GOOS == "windows" {
+		return nil
+	}
+	return &syscall.SysProcAttr{Setpgid: true}
 }
 
 func printUsage() {
