@@ -22,7 +22,7 @@ jobs:
         run: |
           make build-lite
           mkdir -p dist/linux
-          cp bin/ocg-gateway bin/ocg-agent bin/ocg-embedding dist/linux/
+          cp bin/ocg bin/ocg-gateway bin/ocg-agent bin/ocg-embedding dist/linux/
       - name: Upload artifacts (Linux)
         uses: actions/upload-artifact@v4
         with:
@@ -44,6 +44,7 @@ jobs:
           GOARCH: amd64
         run: |
           mkdir -p dist\windows
+          go build -o dist\windows\ocg.exe ./cmd/ocg
           go build -o dist\windows\ocg-gateway.exe ./cmd/gateway
           go build -o dist\windows\ocg-agent.exe ./cmd/agent
           go build -o dist\windows\ocg-embedding.exe ./cmd/embedding-server
@@ -52,3 +53,29 @@ jobs:
         with:
           name: windows-binaries
           path: dist/windows/*
+
+  release:
+    needs: [build-linux, build-windows]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download Linux artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: linux-binaries
+          path: dist/linux
+      - name: Download Windows artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-binaries
+          path: dist/windows
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            dist/linux/*
+            dist/windows/*
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
