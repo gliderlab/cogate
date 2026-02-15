@@ -30,7 +30,7 @@ build-ocg: $(BIN_DIR)
 build-agent: $(BIN_DIR)
 	CGO_CFLAGS="-DSQLITE_ENABLE_FTS5" \
 	CGO_CXXFLAGS="-I/usr/include" \
-	CGO_LDFLAGS="-lfaiss -lomp" \
+	CGO_LDFLAGS="-lfaiss -lgomp -lblas -llapack" \
 	go build -ldflags="$(LDFLAGS)" -tags "faiss sqlite_fts5" -o $(BIN_DIR)/ocg-agent ./cmd/agent/
 
 # Agent without FAISS (fallback to SQLite linear search)
