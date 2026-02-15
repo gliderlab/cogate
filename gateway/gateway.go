@@ -98,17 +98,14 @@ func (g *Gateway) SetClient(c *rpc.Client) {
 func (g *Gateway) Start() error {
 	mux := http.NewServeMux()
 
-	// Static files (web chat UI) with path sanitization
-	staticDir := filepath.Join(getGatewayDir(), "static")
-	log.Printf("Static directory: %s", staticDir)
+	// Static files (web chat UI) embedded in binary
+	staticHandler := embeddedFileServer()
+	log.Printf("Static assets: embedded")
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		path := r.URL.Path
-		if path == "/" {
-			path = "/index.html"
+		if r.URL.Path == "/" {
+			r.URL.Path = "/index.html"
 		}
-		safe := filepath.Clean("/" + path)
-		filePath := filepath.Join(staticDir, safe)
-		http.ServeFile(w, r, filePath)
+		staticHandler.ServeHTTP(w, r)
 	})
 
 	// WebSocket endpoint for real-time chat
