@@ -12,7 +12,9 @@ set -euo pipefail
 
 OCG_DIR="/opt/openclaw-go"
 OCG_REPO="https://github.com/gliderlab/cogate.git"
+OCG_REF="${OCG_REF:-main}"
 LLAMA_REPO="https://github.com/ggml-org/llama.cpp.git"
+LLAMA_REF="${LLAMA_REF:-master}"
 
 LLAMA_JOBS="${LLAMA_JOBS:-1}"
 LLAMA_STATIC="${LLAMA_STATIC:-OFF}"
@@ -48,7 +50,7 @@ if [ -d "$OCG_DIR/.git" ]; then
   cd "$OCG_DIR"
   git remote set-url origin "$OCG_REPO"
   git fetch --all --prune
-  git reset --hard origin/main
+  git reset --hard "origin/${OCG_REF}"
 else
   rm -rf "$OCG_DIR"
   git clone "$OCG_REPO" "$OCG_DIR"
@@ -60,7 +62,7 @@ if [ -d "llama.cpp/.git" ]; then
   cd llama.cpp
   git remote set-url origin "$LLAMA_REPO"
   git fetch --all --prune
-  git reset --hard origin/master
+  git reset --hard "origin/${LLAMA_REF}"
   cd ..
 else
   rm -rf llama.cpp
