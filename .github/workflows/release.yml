@@ -17,7 +17,7 @@ jobs:
       - name: Install deps (SQLite, FAISS, toolchain, zip)
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential pkg-config libsqlite3-dev libfaiss-dev zip
+          sudo apt-get install -y build-essential pkg-config libsqlite3-dev libfaiss-dev libomp-dev zip
       - name: Build (with FAISS)
         run: |
           make build-ocg
@@ -25,7 +25,7 @@ jobs:
           make build-embedding
           CGO_CFLAGS="-DSQLITE_ENABLE_FTS5" \
           CGO_CXXFLAGS="-I/usr/include" \
-          CGO_LDFLAGS="-lfaiss -lgomp -lblas -llapack" \
+          CGO_LDFLAGS="-lfaiss -lomp" \
           go build -tags "faiss sqlite_fts5" -o bin/ocg-agent ./cmd/agent/
           mkdir -p dist/linux
           cp bin/ocg bin/ocg-gateway bin/ocg-agent bin/ocg-embedding dist/linux/
