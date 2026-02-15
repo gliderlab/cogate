@@ -468,13 +468,6 @@ func fatalf(format string, args ...interface{}) {
 	os.Exit(1)
 }
 
-func getSysProcAttr() *syscall.SysProcAttr {
-	if runtime.GOOS == "windows" {
-		return nil
-	}
-	return &syscall.SysProcAttr{Setpgid: true}
-}
-
 func printUsage() {
 	fmt.Println("Usage: ocg <command> [options]")
 	fmt.Println("")
