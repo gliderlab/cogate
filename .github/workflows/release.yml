@@ -1,0 +1,54 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+      - name: Install deps (SQLite, toolchain)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential pkg-config libsqlite3-dev
+      - name: Build (lite, no FAISS)
+        run: |
+          make build-lite
+          mkdir -p dist/linux
+          cp bin/ocg-gateway bin/ocg-agent bin/ocg-embedding dist/linux/
+      - name: Upload artifacts (Linux)
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-binaries
+          path: dist/linux/*
+
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+      - name: Build (CGO disabled, no FAISS)
+        env:
+          CGO_ENABLED: 0
+          GOOS: windows
+          GOARCH: amd64
+        run: |
+          mkdir -p dist\windows
+          go build -o dist\windows\ocg-gateway.exe ./cmd/gateway
+          go build -o dist\windows\ocg-agent.exe ./cmd/agent
+          go build -o dist\windows\ocg-embedding.exe ./cmd/embedding-server
+      - name: Upload artifacts (Windows)
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-binaries
+          path: dist/windows/*

@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>OCG Control Panel</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0f172a;
+      color: #e5e7eb;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 16px;
+      border-bottom: 1px solid #1f2937;
+      background: #111827;
+    }
+    header h1 { font-size: 1.1rem; font-weight: 600; color: #f87171; }
+    .status { padding: 4px 10px; border-radius: 12px; font-size: 0.8rem; background: #1f2937; }
+    .status.online { background: #166534; }
+    .status.offline { background: #7f1d1d; }
+    .status.warn { background: #92400e; }
+    .status.ws { background: #1e40af; }
+    .spacer { flex: 1; }
+    button, input, textarea, select { font: inherit; }
+    #lang-toggle {
+      background: #1f2937;
+      color: #e5e7eb;
+      border: 1px solid #374151;
+      border-radius: 8px;
+      padding: 6px 12px;
+      cursor: pointer;
+    }
+    #lang-toggle:hover { background: #273548; }
+    main { flex: 1; display: grid; grid-template-columns: 2fr 1.1fr; gap: 12px; padding: 12px; overflow: hidden; }
+    .card {
+      background: #111827;
+      border: 1px solid #1f2937;
+      border-radius: 10px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      height: 100%;
+    }
+    .card h2 { font-size: 1rem; color: #f3f4f6; }
+    #chat { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding-right: 4px; }
+    .message { max-width: 90%; padding: 10px 12px; border-radius: 10px; line-height: 1.5; }
+    .message.user { align-self: flex-end; background: #f87171; color: #111827; }
+    .message.assistant { align-self: flex-start; background: #1f2937; border: 1px solid #1f2937; }
+    .message .role { font-size: 0.75rem; opacity: 0.7; margin-bottom: 4px; }
+    .typing { color: #9ca3af; font-style: italic; }
+    #chat-input { display: flex; gap: 8px; }
+    #message-input { flex: 1; padding: 10px; border: 1px solid #1f2937; border-radius: 8px; background: #0b1220; color: #e5e7eb; }
+    #send-btn { padding: 10px 16px; background: #f87171; color: #111827; border: none; border-radius: 8px; cursor: pointer; }
+    #send-btn:disabled { background: #6b7280; color: #111827; cursor: not-allowed; }
+    .section { border-top: 1px solid #1f2937; padding-top: 8px; margin-top: 4px; }
+    input, textarea { background: #0b1220; color: #e5e7eb; border: 1px solid #1f2937; border-radius: 8px; padding: 8px; }
+    textarea { resize: vertical; min-height: 70px; }
+    .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .btn { background: #1f2937; color: #e5e7eb; border: 1px solid #374151; border-radius: 8px; padding: 8px 12px; cursor: pointer; }
+    .btn.primary { background: #f87171; color: #111827; border: none; }
+    .btn:disabled { background: #4b5563; color: #111827; cursor: not-allowed; }
+    ul { list-style: none; padding-left: 0; display: flex; flex-direction: column; gap: 6px; }
+    .stat-line { font-size: 0.95rem; color: #d1d5db; }
+    .small { font-size: 0.85rem; color: #9ca3af; }
+    .pill { display: inline-block; padding: 2px 6px; border-radius: 6px; background: #1f2937; font-size: 0.75rem; margin-left: 6px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 8px; }
+    .mini-card { background: #0b1220; border: 1px solid #1f2937; border-radius: 8px; padding: 8px; }
+    .mini-title { font-weight: 600; color: #f3f4f6; font-size: 0.9rem; }
+    .mono { font-family: "SFMono-Regular", Consolas, Monaco, monospace; font-size: 0.85rem; }
+    pre { background: #0b1220; border: 1px solid #1f2937; border-radius: 8px; padding: 8px; overflow-x: auto; color: #e5e7eb; }
+    .conn-indicator { font-size: 0.75rem; margin-left: 8px; }
+    .conn-indicator.ws { color: #60a5fa; }
+    .conn-indicator.http { color: #fbbf24; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>OCG Control Panel</h1>
+    <span class="status offline" id="status">Connecting...</span>
+    <span class="conn-indicator" id="conn-type"></span>
+    <div class="spacer"></div>
+    <input id="token-input" placeholder="UI token" style="width:140px;padding:6px 10px;border-radius:8px;border:1px solid #374151;background:#0b1220;color:#e5e7eb;" />
+    <button class="btn" id="save-token">Save</button>
+    <button id="lang-toggle">EN</button>
+  </header>
+  <main>
+    <section class="card" style="grid-column: span 1;">
+      <h2 id="chat-title">Chat</h2>
+      <div id="chat"></div>
+      <div id="chat-input">
+        <input type="text" id="message-input" placeholder="Type a message..." autocomplete="off" />
+        <button id="send-btn">Send</button>
+      </div>
+    </section>
+
+    <section class="card" style="grid-column: span 1; overflow-y: auto;">
+      <h2 id="tool-title">Tools</h2>
+
+      <div class="section">
+        <div class="row">
+          <strong id="services-title">Services</strong>
+          <button class="btn" id="refresh-services">Refresh</button>
+        </div>
+        <div class="grid" id="service-cards"></div>
+      </div>
+
+      <div class="section">
+        <div class="row">
+          <strong id="stats-title">Stats</strong>
+          <button class="btn" id="refresh-stats">Refresh</button>
+        </div>
+        <div id="stats" class="small">-</div>
+      </div>
+
+      <div class="section">
+        <div class="row">
+          <strong id="search-title">Memory Search</strong>
+          <button class="btn" id="search-btn">Search</button>
+        </div>
+        <input id="search-query" placeholder="keyword" />
+        <div class="row">
+          <label class="small" for="search-minscore">minScore</label>
+          <input type="number" id="search-minscore" value="0.3" step="0.05" min="0" max="1" style="width:80px;" />
+        </div>
+        <ul id="search-results" class="small"></ul>
+      </div>
+
+      <div class="section">
+        <div class="row">
+          <strong id="store-title">Memory Store</strong>
+          <button class="btn primary" id="store-btn">Store</button>
+        </div>
+        <textarea id="store-text" placeholder="Text to store..."></textarea>
+      </div>
+
+      <div class="section">
+        <div class="row">
+          <strong id="api-title">API Quickstart</strong>
+        </div>
+        <div class="grid">
+          <div class="mini-card">
+            <div class="mini-title">Health</div>
+            <pre class="mono">curl -H "Authorization: Bearer $TOKEN" \
+  $BASE/health</pre>
+          </div>
+          <div class="mini-card">
+            <div class="mini-title">Memory Search</div>
+            <pre class="mono">curl -H "Authorization: Bearer $TOKEN" \
+  "$BASE/memory/search?query=hello"</pre>
+          </div>
+          <div class="mini-card">
+            <div class="mini-title">Memory Store</div>
+            <pre class="mono">curl -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"text":"note"}' \
+  $BASE/memory/store</pre>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const API_BASE = window.location.origin;
+    const WS_URL = API_BASE.replace(/^http/, 'ws') + '/ws/chat';
+    
+    const statusEl = document.getElementById('status');
+    const connTypeEl = document.getElementById('conn-type');
+    const chatEl = document.getElementById('chat');
+    const inputEl = document.getElementById('message-input');
+    const sendBtn = document.getElementById('send-btn');
+    const langBtn = document.getElementById('lang-toggle');
+    const statsEl = document.getElementById('stats');
+    const refreshStatsBtn = document.getElementById('refresh-stats');
+    const searchBtn = document.getElementById('search-btn');
+    const searchQueryEl = document.getElementById('search-query');
+    const searchMinScoreEl = document.getElementById('search-minscore');
+    const searchResultsEl = document.getElementById('search-results');
+    const storeBtn = document.getElementById('store-btn');
+    const storeTextEl = document.getElementById('store-text');
+    const tokenInput = document.getElementById('token-input');
+    const saveTokenBtn = document.getElementById('save-token');
+    const serviceCardsEl = document.getElementById('service-cards');
+    const refreshServicesBtn = document.getElementById('refresh-services');
+
+    const chatTitle = document.getElementById('chat-title');
+    const toolTitle = document.getElementById('tool-title');
+    const statsTitle = document.getElementById('stats-title');
+    const searchTitle = document.getElementById('search-title');
+    const storeTitle = document.getElementById('store-title');
+    const servicesTitle = document.getElementById('services-title');
+    const apiTitle = document.getElementById('api-title');
+
+    // Connection state
+    let ws = null;
+    let useWebSocket = false;
+    let wsReconnectTimer = null;
+
+    const strings = {
+      en: {
+        connecting: 'Connecting...',
+        online: 'Online',
+        offline: 'Offline',
+        needToken: 'Please enter UI token',
+        you: 'You',
+        assistant: 'Assistant',
+        typing: 'Typing...',
+        placeholder: 'Type a message...',
+        send: 'Send',
+        error: 'Error',
+        noReply: '(No reply)',
+        chat: 'Chat',
+        tools: 'Tools',
+        stats: 'Stats',
+        services: 'Services',
+        search: 'Memory Search',
+        store: 'Memory Store',
+        stored: 'Stored',
+        searching: 'Searching...',
+        noResult: 'No result',
+        tokenPlaceholder: 'UI token',
+        saveToken: 'Save',
+        api: 'API Quickstart',
+        health: 'Gateway health',
+        agent: 'Agent',
+        embedding: 'Embedding',
+        llama: 'Llama server',
+        wsConnected: 'WebSocket',
+        httpFallback: 'HTTP',
+      },
+      zh: {
+        connecting: 'Connecting...',
+        online: 'Online',
+        offline: 'Offline',
+        needToken: 'Enter token',
+        you: 'You',
+        assistant: 'Assistant',
+        typing: 'Typing...',
+        placeholder: 'Type a message...',
+        send: 'Send',
+        error: 'Error',
+        noReply: '(No reply)',
+        chat: 'Chat',
+        tools: 'Tools',
+        stats: 'Stats',
+        services: 'Services',
+        search: 'Memory Search',
+        store: 'Memory Store',
+        stored: 'Stored',
+        searching: 'Searching...',
+        noResult: 'No result',
+        tokenPlaceholder: 'UI token',
+        saveToken: 'Save',
+        api: 'API Quickstart',
+        health: 'Gateway health',
+        agent: 'Agent',
+        embedding: 'Embedding',
+        llama: 'Llama server',
+        wsConnected: 'WebSocket',
+        httpFallback: 'HTTP',
+      },
+    };
+
+    function detectLang() {
+      const nav = navigator.language || navigator.userLanguage || '';
+      return nav.toLowerCase().startsWith('zh') ? 'zh' : 'en';
+    }
+
+    let currentLang = detectLang();
+    applyLang(currentLang);
+
+    langBtn.addEventListener('click', () => {
+      currentLang = currentLang === 'en' ? 'zh' : 'en';
+      applyLang(currentLang, true);
+    });
+
+    function applyLang(lang) {
+      const t = strings[lang];
+      document.documentElement.lang = lang;
+      statusEl.textContent = t.connecting;
+      inputEl.placeholder = t.placeholder;
+      sendBtn.textContent = t.send;
+      langBtn.textContent = lang.toUpperCase();
+      chatTitle.textContent = t.chat;
+      toolTitle.textContent = t.tools;
+      statsTitle.textContent = t.stats;
+      searchTitle.textContent = t.search;
+      storeTitle.textContent = t.store;
+      searchBtn.textContent = t.search;
+      storeBtn.textContent = t.store;
+      refreshStatsBtn.textContent = t.stats;
+      servicesTitle.textContent = t.services;
+      refreshServicesBtn.textContent = t.services;
+      apiTitle.textContent = t.api;
+      tokenInput.placeholder = t.tokenPlaceholder;
+      saveTokenBtn.textContent = t.saveToken;
+      document.querySelectorAll('.message .role').forEach(el => {
+        const parent = el.closest('.message');
+        if (parent && parent.classList.contains('user')) el.textContent = t.you;
+        if (parent && parent.classList.contains('assistant')) el.textContent = t.assistant;
+      });
+      // Update connection type indicator
+      if (useWebSocket) {
+        connTypeEl.textContent = t.wsConnected;
+        connTypeEl.className = 'conn-indicator ws';
+      } else if (statusEl.classList.contains('online')) {
+        connTypeEl.textContent = t.httpFallback;
+        connTypeEl.className = 'conn-indicator http';
+      }
+    }
+
+    function getToken() {
+      const ss = sessionStorage.getItem('ocg_ui_token');
+      if (ss) return ss;
+      const legacy = localStorage.getItem('ocg_ui_token');
+      if (legacy) {
+        sessionStorage.setItem('ocg_ui_token', legacy);
+        localStorage.removeItem('ocg_ui_token');
+      }
+      return legacy || '';
+    }
+    function setToken(val) {
+      sessionStorage.setItem('ocg_ui_token', val || '');
+      localStorage.removeItem('ocg_ui_token');
+    }
+
+    tokenInput.value = getToken();
+    saveTokenBtn.addEventListener('click', () => {
+      setToken(tokenInput.value.trim());
+      alert('Saved');
+      checkStatus();
+      refreshStats();
+      refreshServices();
+      // Reconnect WebSocket with new token
+      if (ws) {
+        ws.close();
+      }
+    });
+
+    function authHeaders() {
+      const t = getToken();
+      return t ? { 'Authorization': `Bearer ${t}` } : {};
+    }
+
+    function ensureTokenOrWarn() {
+      const t = getToken();
+      if (!t) {
+        statusEl.textContent = strings[currentLang].needToken;
+        statusEl.className = 'status warn';
+        return false;
+      }
+      return true;
+    }
+
+    let messages = [];
+
+    // WebSocket functions
+    function connectWebSocket() {
+      const token = getToken();
+      if (!token) {
+        return false;
+      }
+
+      try {
+        ws = new WebSocket(WS_URL + '?token=' + encodeURIComponent(token));
+
+        ws.onopen = () => {
+          console.log('[WS] Connected');
+          useWebSocket = true;
+          statusEl.textContent = strings[currentLang].online;
+          statusEl.className = 'status online ws';
+          connTypeEl.textContent = strings[currentLang].wsConnected;
+          connTypeEl.className = 'conn-indicator ws';
+        };
+
+        ws.onmessage = (event) => {
+          try {
+            const msg = JSON.parse(event.data);
+            handleWSMessage(msg);
+          } catch (e) {
+            console.error('[WS] Parse error:', e);
+          }
+        };
+
+        ws.onerror = (error) => {
+          console.log('[WS] Error, will fallback to HTTP');
+        };
+
+        ws.onclose = () => {
+          console.log('[WS] Closed');
+          useWebSocket = false;
+          ws = null;
+          // Only update UI if we were previously connected via WS
+          if (statusEl.classList.contains('ws')) {
+            statusEl.textContent = strings[currentLang].offline;
+            statusEl.className = 'status offline';
+            connTypeEl.textContent = '';
+          }
+          // Try to reconnect after delay
+          if (getToken()) {
+            wsReconnectTimer = setTimeout(() => {
+              if (!useWebSocket) connectWebSocket();
+            }, 3000);
+          }
+        };
+
+        return true;
+      } catch (e) {
+        console.log('[WS] Failed to create:', e);
+        return false;
+      }
+    }
+
+    function handleWSMessage(msg) {
+      hideTyping();
+      
+      if (msg.type === 'done') {
+        const data = msg.content ? JSON.parse(msg.content) : {};
+        const reply = data.content || strings[currentLang].noReply;
+        addMessage('assistant', reply);
+        messages.push({ role: 'assistant', content: reply });
+        sendBtn.disabled = false;
+        inputEl.focus();
+      } else if (msg.type === 'error') {
+        const data = msg.content ? JSON.parse(msg.content) : {};
+        addMessage('assistant', `${strings[currentLang].error}: ${data.error || 'unknown'}`);
+        sendBtn.disabled = false;
+        inputEl.focus();
+      } else if (msg.type === 'chunk') {
+        // For future streaming support
+        const data = msg.content ? JSON.parse(msg.content) : {};
+        // Append chunk to last message or create new
+      }
+    }
+
+    function sendViaWebSocket(content) {
+      if (!ws || ws.readyState !== WebSocket.OPEN) {
+        // Fallback to HTTP
+        sendViaHTTP(content);
+        return;
+      }
+
+      const msg = {
+        type: 'chat',
+        content: JSON.stringify({
+          model: 'default',
+          messages: messages
+        })
+      };
+      ws.send(JSON.stringify(msg));
+    }
+
+    async function sendViaHTTP(content) {
+      try {
+        const res = await fetch(`${API_BASE}/v1/chat/completions`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...authHeaders() },
+          body: JSON.stringify({ messages })
+        });
+
+        hideTyping();
+
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          const msg = err.error || strings[currentLang].error;
+          addMessage('assistant', `${strings[currentLang].error}: ${msg}`);
+          return;
+        }
+
+        const data = await res.json();
+        const reply = data.choices?.[0]?.message?.content || strings[currentLang].noReply;
+        addMessage('assistant', reply);
+        messages.push({ role: 'assistant', content: reply });
+      } catch (e) {
+        hideTyping();
+        addMessage('assistant', `${strings[currentLang].error}: ${e.message}`);
+      } finally {
+        sendBtn.disabled = false;
+        inputEl.focus();
+      }
+    }
+
+    async function checkStatus() {
+      if (!ensureTokenOrWarn()) return;
+      try {
+        const res = await fetch(`${API_BASE}/health`, { headers: authHeaders() });
+        if (!res.ok) throw new Error('unauthorized');
+        await res.json();
+        
+        // Only update if not already connected via WS
+        if (!useWebSocket) {
+          statusEl.textContent = strings[currentLang].online;
+          statusEl.className = 'status online';
+          connTypeEl.textContent = strings[currentLang].httpFallback;
+          connTypeEl.className = 'conn-indicator http';
+        }
+        
+        // Try to connect WebSocket
+        if (!ws && !wsReconnectTimer) {
+          connectWebSocket();
+        }
+      } catch {
+        if (!useWebSocket) {
+          statusEl.textContent = strings[currentLang].offline;
+          statusEl.className = 'status offline';
+          connTypeEl.textContent = '';
+        }
+      }
+    }
+
+    function addMessage(role, content) {
+      const t = strings[currentLang];
+      const div = document.createElement('div');
+      div.className = `message ${role}`;
+      div.innerHTML = `<div class="role">${role === 'user' ? t.you : t.assistant}</div>${content}`;
+      chatEl.appendChild(div);
+      chatEl.scrollTop = chatEl.scrollHeight;
+    }
+
+    function showTyping() {
+      const t = strings[currentLang];
+      const div = document.createElement('div');
+      div.className = 'message assistant';
+      div.id = 'typing';
+      div.innerHTML = `<div class="role">${t.assistant}</div><span class="typing">${t.typing}</span>`;
+      chatEl.appendChild(div);
+      chatEl.scrollTop = chatEl.scrollHeight;
+    }
+
+    function hideTyping() {
+      const typing = document.getElementById('typing');
+      if (typing) typing.remove();
+    }
+
+    async function sendMessage() {
+      if (!ensureTokenOrWarn()) return;
+      const content = inputEl.value.trim();
+      if (!content) return;
+
+      inputEl.value = '';
+      addMessage('user', content);
+      messages.push({ role: 'user', content });
+
+      showTyping();
+      sendBtn.disabled = true;
+
+      if (useWebSocket) {
+        sendViaWebSocket(content);
+      } else {
+        sendViaHTTP(content);
+      }
+    }
+
+    async function refreshStats() {
+      if (!ensureTokenOrWarn()) { statsEl.textContent = strings[currentLang].needToken; return; }
+      statsEl.textContent = '...';
+      try {
+        const res = await fetch(`${API_BASE}/storage/stats`, { headers: authHeaders() });
+        if (!res.ok) throw new Error('stats error');
+        const data = await res.json();
+        const s = data.stats || {};
+        statsEl.innerHTML = `messages: ${s.messages ?? '-'}<br>memories: ${s.memories ?? '-'}<br>files: ${s.files ?? '-'}`;
+      } catch (e) {
+        statsEl.textContent = `${strings[currentLang].error}`;
+      }
+    }
+
+    async function refreshServices() {
+      const t = strings[currentLang];
+      serviceCardsEl.innerHTML = '';
+      const services = [
+        { id: 'gateway', name: 'Gateway', url: `${API_BASE}/health`, desc: t.health },
+      ];
+      for (const svc of services) {
+        const card = document.createElement('div');
+        card.className = 'mini-card';
+        card.innerHTML = `<div class="mini-title">${svc.name}</div><div class="small">${svc.desc}</div><div class="small" id="svc-${svc.id}">...</div>`;
+        serviceCardsEl.appendChild(card);
+        try {
+          if (!ensureTokenOrWarn()) continue;
+          const res = await fetch(svc.url, { headers: authHeaders() });
+          const ok = res.ok;
+          document.getElementById(`svc-${svc.id}`).innerText = ok ? 'OK' : 'Unavailable';
+        } catch {
+          document.getElementById(`svc-${svc.id}`).innerText = 'Unavailable';
+        }
+      }
+    }
+
+    async function doSearch() {
+      if (!ensureTokenOrWarn()) { searchResultsEl.innerHTML = `<li>${strings[currentLang].needToken}</li>`; return; }
+      const q = searchQueryEl.value.trim();
+      if (!q) return;
+      searchResultsEl.innerHTML = `<li>${strings[currentLang].searching}</li>`;
+      const minScore = parseFloat(searchMinScoreEl.value) || 0.3;
+      try {
+        const res = await fetch(`${API_BASE}/memory/search?query=${encodeURIComponent(q)}&limit=5&minScore=${minScore}`, { headers: authHeaders() });
+        if (!res.ok) throw new Error('search error');
+        const data = await res.json();
+        const items = data.items || [];
+        if (!items.length) {
+          searchResultsEl.innerHTML = `<li>${strings[currentLang].noResult}</li>`;
+          return;
+        }
+        searchResultsEl.innerHTML = '';
+        items.forEach(item => {
+          const li = document.createElement('li');
+          const score = parseFloat(item.score);
+          li.innerHTML = `${item.text || ''} <span class="pill">${isNaN(score) ? '-' : (score * 100).toFixed(1) + '%'}</span>`;
+          searchResultsEl.appendChild(li);
+        });
+      } catch (e) {
+        searchResultsEl.innerHTML = `<li>${strings[currentLang].error}</li>`;
+      }
+    }
+
+    async function doStore() {
+      if (!ensureTokenOrWarn()) return;
+      const text = storeTextEl.value.trim();
+      if (!text) return;
+      storeBtn.disabled = true;
+      try {
+        const res = await fetch(`${API_BASE}/memory/store`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...authHeaders() },
+          body: JSON.stringify({ text })
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          searchResultsEl.innerHTML = `<li>${strings[currentLang].error}</li>`;
+          return;
+        }
+        alert(strings[currentLang].stored + `: ${data.id || ''}`);
+        storeTextEl.value = '';
+      } catch (e) {
+        alert(`${strings[currentLang].error}: ${e.message}`);
+      } finally {
+        storeBtn.disabled = false;
+      }
+    }
+
+    sendBtn.addEventListener('click', sendMessage);
+    inputEl.addEventListener('keydown', (e) => { if (e.key === 'Enter') sendMessage(); });
+    refreshStatsBtn.addEventListener('click', refreshStats);
+    refreshServicesBtn.addEventListener('click', refreshServices);
+    searchBtn.addEventListener('click', doSearch);
+    storeBtn.addEventListener('click', doStore);
+
+    // Cleanup on page unload
+    window.addEventListener('beforeunload', () => {
+      if (wsReconnectTimer) clearTimeout(wsReconnectTimer);
+      if (ws) ws.close();
+    });
+
+    checkStatus();
+    refreshStats();
+    refreshServices();
+    setInterval(checkStatus, 15000);
+  </script>
+</body>
+</html>

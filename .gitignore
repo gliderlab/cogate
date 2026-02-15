@@ -1,0 +1,17 @@
+# Build artifacts
+ocg-*
+*-faiss
+*.db
+*.log
+vector.index
+bin/
+
+# Config/keys (do not commit)
+env.config
+
+# Embedding models
+models/*.gguf
+
+# System files
+.DS_Store
+llama.cpp
