@@ -75,30 +75,47 @@ func startCmd(args []string) {
 	agentSpec := ProcessSpec{"agent", "ocg-agent", filepath.Join(*pidDir, pidFiles["agent"])}
 	gatewaySpec := ProcessSpec{"gateway", "ocg-gateway", filepath.Join(*pidDir, pidFiles["gateway"])}
 
-	if isRunning(embeddingSpec.PidFile) {
-		fmt.Printf("%s already running (pid file: %s)\n", embeddingSpec.Name, embeddingSpec.PidFile)
-	} else if err := startProcess(binDir, cfgDir, envConfig, embeddingSpec); err != nil {
-		fatalf("Failed to start %s: %v", embeddingSpec.Name, err)
+	// Start processes concurrently
+	type startResult struct {
+		name string
+		err  error
+	}
+	results := make(chan startResult, 3)
+	startOne := func(spec ProcessSpec) {
+		if isRunning(spec.PidFile) {
+			fmt.Printf("%s already running (pid file: %s)\n", spec.Name, spec.PidFile)
+			results <- startResult{name: spec.Name, err: nil}
+			return
+		}
+		results <- startResult{name: spec.Name, err: startProcess(binDir, cfgDir, envConfig, spec)}
 	}
 
-	if err := waitForEmbeddingReady(cfgPath, 30*time.Second); err != nil {
-		fatalf("Embedding service not ready: %v", err)
+	go startOne(embeddingSpec)
+	go startOne(agentSpec)
+	go startOne(gatewaySpec)
+
+	var embedErr error
+	for i := 0; i < 3; i++ {
+		res := <-results
+		if res.err != nil {
+			if res.name == "embedding" {
+				embedErr = res.err
+				fmt.Fprintf(os.Stderr, "⚠️  Failed to start %s: %v\n", res.name, res.err)
+				continue
+			}
+			fatalf("Failed to start %s: %v", res.name, res.err)
+		}
 	}
 
-	if isRunning(agentSpec.PidFile) {
-		fmt.Printf("%s already running (pid file: %s)\n", agentSpec.Name, agentSpec.PidFile)
-	} else if err := startProcess(binDir, cfgDir, envConfig, agentSpec); err != nil {
-		fatalf("Failed to start %s: %v", agentSpec.Name, err)
+	// Embedding is optional: warn only if not ready
+	if embedErr == nil {
+		if err := waitForEmbeddingReady(cfgPath, 30*time.Second); err != nil {
+			fmt.Fprintf(os.Stderr, "⚠️  Embedding service not ready: %v\n", err)
+		}
 	}
 
 	if err := waitForAgentReady(cfgPath, 20*time.Second); err != nil {
 		fatalf("Agent not ready: %v", err)
-	}
-
-	if isRunning(gatewaySpec.PidFile) {
-		fmt.Printf("%s already running (pid file: %s)\n", gatewaySpec.Name, gatewaySpec.PidFile)
-	} else if err := startProcess(binDir, cfgDir, envConfig, gatewaySpec); err != nil {
-		fatalf("Failed to start %s: %v", gatewaySpec.Name, err)
 	}
 
 	if err := waitForGatewayReady(cfgPath, 20*time.Second); err != nil {
