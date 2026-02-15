@@ -8,19 +8,21 @@ on:
 jobs:
   build-linux:
     runs-on: ubuntu-latest
+    container: debian:trixie
     steps:
       - uses: actions/checkout@v4
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
           go-version: '1.21'
-      - name: Install deps (SQLite, toolchain, zip)
+      - name: Install deps (FAISS, SQLite, toolchain, zip)
         run: |
-          sudo apt-get update
-          sudo apt-get install -y build-essential pkg-config libsqlite3-dev zip
-      - name: Build (lite, no FAISS)
+          apt-get update
+          apt-get install -y build-essential pkg-config libsqlite3-dev libfaiss-dev \
+            libopenblas-dev liblapack-dev libgomp1 zip
+      - name: Build (FAISS)
         run: |
-          make build-lite
+          make build
           mkdir -p dist/linux
           cp bin/ocg bin/ocg-gateway bin/ocg-agent bin/ocg-embedding dist/linux/
       - name: Create Linux zip
