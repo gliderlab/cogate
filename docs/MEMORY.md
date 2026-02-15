@@ -1,38 +1,38 @@
 # Vector Memory (FAISS HNSW)
 
-向量记忆存储，支持 FAISS HNSW 索引 + SQLite + 本地/远程 Embedding。
+Vector memory store with FAISS HNSW index + SQLite + Local/Remote Embedding.
 
-## 架构
+## Architecture
 
 ```
 VectorMemoryStore
-├── SQLite (持久化存储)
-├── FAISS HNSW (向量索引)
-├── FTS5 (关键词搜索)
+├── SQLite (persistent storage)
+├── FAISS HNSW (vector index)
+├── FTS5 (keyword search)
 └── Embedding Provider
     ├── LocalProvider (llama.cpp)
     └── OpenAIProvider (OpenAI API)
 ```
 
-## 配置
+## Configuration
 
 ```go
 type Config struct {
     ApiKey           string  // OpenAI API Key
     EmbeddingModel   string  // text-embedding-3-small/large
-    EmbeddingServer  string  // 本地 embedding 服务 URL
-    EmbeddingDim    int     // 向量维度 (自动检测)
-    MaxResults      int     // 默认 5
-    MinScore        float32 // 最小相似度 (默认 0.7)
-    HNSWPath        string  // 索引文件路径
-    HybridEnabled   bool    // 混合搜索 (默认 true)
-    VectorWeight    float32 // 向量权重 (默认 0.7)
-    TextWeight      float32 // 关键词权重 (默认 0.3)
-    CandidateMult   int     // 候选乘数 (默认 4)
+    EmbeddingServer  string  // local embedding service URL
+    EmbeddingDim    int     // vector dimension (auto-detected)
+    MaxResults      int     // default 5
+    MinScore        float32 // minimum similarity (default 0.7)
+    HNSWPath        string  // index file path
+    HybridEnabled   bool    // hybrid search (default true)
+    VectorWeight    float32 // vector weight (default 0.7)
+    TextWeight      float32 // keyword weight (default 0.3)
+    CandidateMult   int     // candidate multiplier (default 4)
 }
 ```
 
-## 初始化
+## Initialization
 
 ```go
 store, err := memory.NewVectorMemoryStore("ocg.db", memory.Config{
@@ -41,66 +41,66 @@ store, err := memory.NewVectorMemoryStore("ocg.db", memory.Config{
 })
 ```
 
-优先级：本地 embedding → OpenAI → 占位向量
+Priority: local embedding → OpenAI → placeholder vector
 
-## 核心操作
+## Core Operations
 
-### 存储记忆
-
-```go
-id, err := store.Store("我喜欢蓝色", "preference", 0.8)
-```
-
-### 更新记忆
+### Store Memory
 
 ```go
-updated, err := store.Update(id, "我更喜欢绿色", "", 0.9)
+id, err := store.Store("I like blue", "preference", 0.8)
 ```
 
-### 搜索
+### Update Memory
 
 ```go
-results, err := store.Search("我的颜色偏好", 5, 0.7)
-// 返回: []MemoryResult{Entry, Score, Matched}
+updated, err := store.Update(id, "I prefer green", "", 0.9)
 ```
 
-### 获取
+### Search
+
+```go
+results, err := store.Search("my color preference", 5, 0.7)
+// returns: []MemoryResult{Entry, Score, Matched}
+```
+
+### Get
 
 ```go
 entry, err := store.Get(id)
 ```
 
-### 删除
+### Delete
 
 ```go
 deleted, err := store.Delete(id)
 ```
 
-## 搜索模式
+## Search Modes
 
-| 模式 | 条件 | 说明 |
-|------|------|------|
-| **混合搜索** | HybridEnabled=true | 向量 + BM25 融合 |
-| **向量搜索** | HybridEnabled=false | HNSW / SQLite |
-| **关键词搜索** | 无 embedding 服务 | FTS5 / LIKE |
+| Mode | Condition | Description |
+|------|-----------|-------------|
+| **Hybrid** | HybridEnabled=true | Vector + BM25 fusion |
+| **Vector** | HybridEnabled=false | HNSW / SQLite |
+| **Keyword** | no embedding service | FTS5 / LIKE |
 
-### HNSW 向量搜索
+### HNSW Vector Search
 
-- 使用 FAISS HNSW 索引
-- 支持 cosine/ip/l2 距离
-- 自动回退到 SQLite 线性搜索
+- Uses FAISS HNSW index
+- Supports cosine/ip/l2 distance
+- Auto-fallback to SQLite linear search
 
-### 混合搜索
+### Hybrid Search
 
 ```
 score = VectorWeight * vector_score + TextWeight * text_score
 ```
 
-- 向量候选 × CandidateMult
-- 关键词候选 (FTS5 BM25)
-- 融合排序
+- vector candidates × CandidateMult
+- keyword candidates (FTS5 BM25)
+- fused ranking
 
-## 数据库 Schema
+## Database Schema
 
 ```sql
 CREATE TABLE vector_memories (
@@ -115,19 +115,19 @@ CREATE TABLE vector_memories (
     updated_at INTEGER
 )
 
--- FTS5 索引
+-- FTS5 index
 CREATE VIRTUAL TABLE vector_memories_fts USING fts5(id, text, category)
 ```
 
-## 类别
+## Categories
 
 ```go
 var MEMORY_CATEGORIES = []string{
-    "preference",  // 偏好
-    "decision",    // 决策
-    "fact",        // 事实
-    "entity",      // 实体
-    "other",       // 其他
+    "preference",  // user preferences
+    "decisions",   // decisions made
+    "facts",       // factual information
+    "entities",    // entities/people
+    "other",       // other
 }
 ```
 
@@ -139,8 +139,8 @@ var MEMORY_CATEGORIES = []string{
 provider, err := memory.NewLocalProvider("http://localhost:50001", 768)
 ```
 
-- 连接本地 llama.cpp embedding 服务
-- 30s 超时等待服务就绪
+- Connect to local llama.cpp embedding service
+- 30s timeout waiting for service readiness
 
 ### OpenAIProvider
 
@@ -148,60 +148,60 @@ provider, err := memory.NewLocalProvider("http://localhost:50001", 768)
 provider, err := memory.NewOpenAIProvider("sk-xxx", "text-embedding-3-small")
 ```
 
-- 使用 OpenAI API
-- 支持 text-embedding-3-small/large/ada-002
+- Uses OpenAI API
+- Supports text-embedding-3-small/large/ada-002
 
-## 向量维度
+## Vector Dimensions
 
-| 模型 | 维度 |
-|------|------|
+| Model | Dimension |
+|-------|-----------|
 | text-embedding-3-small | 1536 |
 | text-embedding-3-large | 3072 |
 | text-embedding-ada-002 | 1024 |
 | embedding-gemma-300M | 768 |
 
-## 索引持久化
+## Index Persistence
 
-- HNSW 索引保存到 `HNSWPath`
-- 启动时自动加载已有向量
-- 增删改后自动重建索引
+- HNSW index saved to `HNSWPath`
+- Auto-load existing vectors on startup
+- Auto-rebuild index after add/update/delete
 
-## 性能
+## Performance
 
-- HNSW: O(log n) 查询
-- SQLite 线性: O(n)
+- HNSW: O(log n) query
+- SQLite linear: O(n)
 - FTS5: O(log n)
 
-## 错误处理
+## Error Handling
 
-- embedding 服务不可用 → 回退到关键词搜索
-- HNSW 初始化失败 → 使用 SQLite 线性搜索
-- 向量维度不匹配 → 跳过该向量并记录日志
+- embedding service unavailable → fallback to keyword search
+- HNSW init failed → use SQLite linear search
+- vector dimension mismatch → skip vector and log
 
-## FAISS HNSW 实现
+## FAISS HNSW Implementation
 
-- **faiss_hnsw.go**: CGO 调用 FAISS 库 (需要 `cgo` + `faiss` tag)
-- **hnsw_stub.go**: 非 FAISS 编译时的存根 (返回错误)
+- **faiss_hnsw.go**: CGO binding to FAISS library (requires `cgo` + `faiss` tag)
+- **hnsw_stub.go**: stub for non-FAISS builds (returns error)
 
-### 编译
+### Build
 
 ```bash
-# 带 FAISS
+# With FAISS
 CGO_CFLAGS="-DSQLITE_ENABLE_FTS5" \
 CGO_CXXFLAGS="-I/usr/include" \
 CGO_LDFLAGS="-lfaiss -lgomp -lblas -llapack" \
 go build -tags "faiss sqlite_fts5" -o ocg-agent ./cmd/agent/
 
-# 无 FAISS (SQLite 线性搜索)
+# Without FAISS (SQLite linear search)
 CGO_CFLAGS="-DSQLITE_ENABLE_FTS5" \
 go build -tags "sqlite_fts5" -o ocg-agent ./cmd/agent/
 ```
 
-### HNSW 参数
+### HNSW Parameters
 
-| 参数 | 默认值 | 说明 |
-|------|--------|------|
-| M | 16 | 每节点连接数 |
-| EfSearch | 100 | 搜索时探索因子 |
-| EfConstruct | 200 | 构建时探索因子 |
-| Distance | l2 | 距离度量 (l2/ip/cosine) |
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| M | 16 | connections per node |
+| EfSearch | 100 | search exploration factor |
+| EfConstruct | 200 | construction exploration factor |
+| Distance | l2 | distance metric (l2/ip/cosine) |

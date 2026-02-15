@@ -1,30 +1,30 @@
 # RPC Protocol
 
-Gateway 与 Agent 之间的 RPC 通信协议。
+RPC communication protocol between Gateway and Agent.
 
-## 概览
+## Overview
 
 ```
 Gateway (Unix Socket RPC)  ←→  Agent
    /tmp/ocg-agent.sock
 ```
 
-## 连接
+## Connection
 
 ```go
 client, err := rpc.Dial("unix", "/tmp/ocg-agent.sock")
 ```
 
-## 数据类型
+## Data Types
 
 ### Message
 
 ```go
 type Message struct {
     Role                 string       // "user" | "assistant" | "system" | "tool"
-    Content              string       // 消息内容
-    ToolCalls            []ToolCall   // LLM 产生的工具调用
-    ToolExecutionResults []ToolResult // 工具执行结果
+    Content              string       // message content
+    ToolCalls            []ToolCall   // tool calls from LLM
+    ToolExecutionResults []ToolResult // tool execution results
 }
 ```
 
@@ -32,11 +32,11 @@ type Message struct {
 
 ```go
 type ToolCall struct {
-    ID   string // 工具调用 ID
+    ID   string // tool call ID
     Type string // "function"
     Function struct {
-        Name      string // 工具名称
-        Arguments string // JSON 参数
+        Name      string // tool name
+        Arguments string // JSON arguments
     }
 }
 ```
@@ -45,9 +45,9 @@ type ToolCall struct {
 
 ```go
 type ToolResult struct {
-    ID     string      // 对应 ToolCall.ID
+    ID     string      // corresponds to ToolCall.ID
     Type   string      // "function"
-    Result interface{} // 执行结果
+    Result interface{} // execution result
 }
 ```
 
@@ -55,8 +55,8 @@ type ToolResult struct {
 
 ```go
 type ChatArgs struct {
-    Messages []Message // 对话历史
-    Tools    []Tool    // 可用工具描述 (可选)
+    Messages []Message // conversation history
+    Tools    []Tool    // available tool descriptions (optional)
 }
 ```
 
@@ -64,27 +64,27 @@ type ChatArgs struct {
 
 ```go
 type ChatReply struct {
-    Content string     // LLM 回复
-    Tools   []ToolCall // 后续工具调用 (可选)
+    Content string     // LLM response
+    Tools   []ToolCall // subsequent tool calls (optional)
 }
 ```
 
-## RPC 方法
+## RPC Methods
 
 ### Chat
 
-处理聊天请求，返回 LLM 回复或工具调用。
+Process chat request, return LLM response or tool calls.
 
 ```go
 func (s *RPCService) Chat(args ChatArgs, reply *ChatReply) error
 ```
 
-**调用示例：**
+**Example:**
 
 ```go
 args := rpcproto.ChatArgs{
     Messages: []rpcproto.Message{
-        {Role: "user", Content: "你好"},
+        {Role: "user", Content: "Hello"},
     },
 }
 var reply rpcproto.ChatReply
@@ -94,13 +94,13 @@ fmt.Println(reply.Content)
 
 ### Stats
 
-获取存储统计信息。
+Get storage statistics.
 
 ```go
 func (s *RPCService) Stats(_ struct{}, reply *StatsReply) error
 ```
 
-**返回：**
+**Returns:**
 
 ```json
 {
@@ -112,26 +112,26 @@ func (s *RPCService) Stats(_ struct{}, reply *StatsReply) error
 
 ### MemorySearch
 
-向量记忆搜索。
+Vector memory search.
 
 ```go
 func (s *RPCService) MemorySearch(args MemorySearchArgs, reply *ToolResultReply) error
 ```
 
-**参数：**
+**Parameters:**
 
 ```go
 type MemorySearchArgs struct {
-    Query    string  // 搜索文本
-    Category string  // 类别过滤 (可选)
-    Limit    int     // 返回数量 (默认 5)
-    MinScore float64 // 最小相似度 (默认 0.7)
+    Query    string  // search text
+    Category string  // category filter (optional)
+    Limit    int     // result count (default 5)
+    MinScore float64 // minimum similarity (default 0.7)
 }
 ```
 
 ### MemoryGet
 
-获取单条记忆。
+Get a single memory entry.
 
 ```go
 func (s *RPCService) MemoryGet(args MemoryGetArgs, reply *ToolResultReply) error
@@ -139,42 +139,42 @@ func (s *RPCService) MemoryGet(args MemoryGetArgs, reply *ToolResultReply) error
 
 ### MemoryStore
 
-存储新记忆。
+Store a new memory.
 
 ```go
 func (s *RPCService) MemoryStore(args MemoryStoreArgs, reply *ToolResultReply) error
 ```
 
-**参数：**
+**Parameters:**
 
 ```go
 type MemoryStoreArgs struct {
-    Text       string  // 记忆内容
-    Category   string  // 类别 (preference/decision/fact/entity/other)
-    Importance float64 // 重要程度 (0-1)
+    Text       string  // memory content
+    Category   string  // category (preference/decision/fact/entity/other)
+    Importance float64 // importance (0-1)
 }
 ```
 
-## 工具调用流程
+## Tool Call Flow
 
 ```
 1. Gateway → Agent.RPC.Chat(ChatArgs)
-2. Agent 执行 LLM，返回 ToolCall 或 Content
-3. Gateway 执行工具
-4. Gateway → Agent.RPC.Chat(带 ToolExecutionResults)
-5. Agent 继续 LLM 生成最终回复
+2. Agent runs LLM, returns ToolCall or Content
+3. Gateway executes tools
+4. Gateway → Agent.RPC.Chat(with ToolExecutionResults)
+5. Agent continues LLM to generate final response
 ```
 
-## 错误处理
+## Error Handling
 
-| 错误 | 说明 |
-|------|------|
-| `agent not initialized` | Agent 未启动 |
-| `storage not initialized` | 存储未初始化 |
-| `memory store not initialized` | 记忆存储未初始化 |
-| `timeout waiting for agent` | Agent socket 未就绪 |
+| Error | Description |
+|-------|-------------|
+| `agent not initialized` | Agent not started |
+| `storage not initialized` | Storage not initialized |
+| `memory store not initialized` | Memory store not initialized |
+| `timeout waiting for agent` | Agent socket not ready |
 
-## 客户端示例 (Go)
+## Client Example (Go)
 
 ```go
 package main
@@ -194,7 +194,7 @@ func main() {
 
     args := rpcproto.ChatArgs{
         Messages: []rpcproto.Message{
-            {Role: "user", Content: "你好"},
+            {Role: "user", Content: "Hello"},
         },
     }
     var reply rpcproto.ChatReply
@@ -205,10 +205,10 @@ func main() {
 }
 ```
 
-## 端口与路径
+## Ports and Paths
 
-| 服务 | 地址 |
-|------|------|
+| Service | Address |
+|---------|---------|
 | Agent RPC Socket | `/tmp/ocg-agent.sock` |
 | Gateway HTTP | `http://localhost:55003` |
 | Embedding | `http://localhost:50001` |

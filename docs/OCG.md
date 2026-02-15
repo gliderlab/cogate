@@ -1,53 +1,53 @@
 # OCG Process Manager
 
-OCG 进程管理器，统一管理 embedding、agent、gateway 三个进程的启动与关闭。
+OCG process manager, unified management of embedding, agent, and gateway lifecycle.
 
-## 快速开始
+## Quick Start
 
 ```bash
-# 启动所有服务
+# Start all services
 ./bin/ocg start
 
-# 查看状态
+# Check status
 ./bin/ocg status
 
-# 停止所有服务
+# Stop all services
 ./bin/ocg stop
 
-# 重启
+# Restart
 ./bin/ocg restart
 ```
 
-## 命令
+## Commands
 
 ### start
 
-依次启动 embedding → agent → gateway，等待所有服务就绪后 **ocg 进程退出**。
+Starts embedding → agent → gateway in order, waits for all services to be ready, then **exits**.
 
 ```bash
 ./bin/ocg start [options]
 ```
 
-**选项：**
+**Options:**
 
-| 选项 | 默认值 | 说明 |
-|------|--------|------|
-| `--config` | `./env.config` | 配置文件路径 |
-| `--pid-dir` | `/tmp/ocg` | PID 文件目录 |
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--config` | `./env.config` | config file path |
+| `--pid-dir` | `/tmp/ocg` | PID file directory |
 
-**流程：**
+**Flow:**
 
-1. 启动 embedding 服务
-2. 等待 embedding health check 通过
-3. 启动 agent 服务
-4. 等待 agent socket 就绪
-5. 启动 gateway 服务
-6. 等待 gateway health check 通过
-7. ocg 进程退出
+1. Start embedding service
+2. Wait for embedding health check
+3. Start agent service
+4. Wait for agent socket
+5. Start gateway service
+6. Wait for gateway health check
+7. ocg process exits
 
 ### stop
 
-依次停止 gateway → agent → embedding，每个进程采用**逐级信号**关闭：
+Stops gateway → agent → embedding in order, using **escalating signals**:
 
 ```
 SIGTERM (3s) → SIGINT (3s) → SIGKILL
@@ -57,21 +57,21 @@ SIGTERM (3s) → SIGINT (3s) → SIGKILL
 ./bin/ocg stop [options]
 ```
 
-**选项：**
+**Options:**
 
-| 选项 | 默认值 | 说明 |
-|------|--------|------|
-| `--pid-dir` | `/tmp/ocg` | PID 文件目录 |
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--pid-dir` | `/tmp/ocg` | PID file directory |
 
 ### status
 
-显示各进程运行状态和健康检查结果。
+Shows running status and health check results for each process.
 
 ```bash
 ./bin/ocg status [options]
 ```
 
-**输出示例：**
+**Example Output:**
 
 ```
 embedding  running (pid 7963)
@@ -81,22 +81,22 @@ embedding health: true
 gateway health: true
 ```
 
-**选项：**
+**Options:**
 
-| 选项 | 默认值 | 说明 |
-|------|--------|------|
-| `--config` | `./env.config` | 配置文件路径 |
-| `--pid-dir` | `/tmp/ocg` | PID 文件目录 |
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--config` | `./env.config` | config file path |
+| `--pid-dir` | `/tmp/ocg` | PID file directory |
 
 ### restart
 
-等价于 `stop` + `start`。
+Equivalent to `stop` + `start`.
 
 ```bash
 ./bin/ocg restart [options]
 ```
 
-## 文件结构
+## File Structure
 
 ```
 /tmp/ocg/
@@ -109,49 +109,49 @@ gateway health: true
     └── gateway.log
 ```
 
-## 配置文件
+## Configuration File
 
-默认读取 `env.config`，支持以下方式查找：
+Defaults to reading `env.config`, supports these lookup methods:
 
-1. `--config` 指定路径
-2. 当前目录 `env.config`
-3. 可执行文件同目录 `env.config`
-4. 可执行文件父目录 `env.config`
+1. path specified via `--config`
+2. current directory `env.config`
+3. same directory as executable `env.config`
+4. parent directory of executable `env.config`
 
-**关键配置项：**
+**Key Configuration:**
 
-| 变量 | 说明 |
-|------|------|
-| `EMBEDDING_SERVER_URL` | embedding 服务地址 |
-| `OPENCLAW_AGENT_SOCK` | agent Unix socket 路径 |
-| `OPENCLAW_PORT` | gateway 端口 (默认 55003) |
-| `OPENCLAW_UI_TOKEN` | Web UI 认证 token |
+| Variable | Description |
+|----------|-------------|
+| `EMBEDDING_SERVER_URL` | embedding service address |
+| `OPENCLAW_AGENT_SOCK` | agent Unix socket path |
+| `OPENCLAW_PORT` | gateway port (default 55003) |
+| `OPENCLAW_UI_TOKEN` | Web UI auth token |
 
-## 健康检查
+## Health Checks
 
 - **embedding**: `http://localhost:50000/health`
-- **gateway**: `http://localhost:55003/health` (需 token)
+- **gateway**: `http://localhost:55003/health` (requires token)
 
-## 与 Gateway 的关系
+## Relationship with Gateway
 
-- **旧版本**: `ocg-gateway` 自拉起 agent/embedding
-- **新版本 (ocg)**: ocg 统一管理生命周期，gateway 只负责连接 agent
+- **Old version**: `ocg-gateway` auto-starts agent/embedding
+- **New version (ocg)**: ocg manages lifecycle, gateway only connects to agent
 
-Gateway 启动时不再自动启动其他服务，需要先运行 `ocg start`。
+Gateway no longer auto-starts other services; you must run `ocg start` first.
 
-## 故障排查
+## Troubleshooting
 
-### 端口占用
+### Port Already in Use
 
 ```
 listen tcp 0.0.0.0:50000: bind: address already in use
 ```
 
-解决：先停掉占用进程或修改 `env.config` 中的端口。
+Solution: Stop the conflicting process or change the port in `env.config`.
 
-### 服务启动超时
+### Service Startup Timeout
 
-检查日志：
+Check logs:
 
 ```bash
 tail -f /tmp/ocg/logs/embedding.log
@@ -159,9 +159,9 @@ tail -f /tmp/ocg/logs/agent.log
 tail -f /tmp/ocg/logs/gateway.log
 ```
 
-### PID 文件残留
+### Stale PID Files
 
-如果进程异常退出，手动清理：
+If process exits abnormally, manually clean up:
 
 ```bash
 rm /tmp/ocg/*.pid
