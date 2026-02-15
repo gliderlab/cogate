@@ -187,7 +187,9 @@ func startProcess(binDir, cfgDir string, envConfig map[string]string, spec Proce
 	cmd.Stdout = logFile
 	cmd.Stderr = logFile
 	cmd.Env = mergeEnv(envConfig)
-	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	if runtime.GOOS != "windows" {
+		cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	}
 
 	if err := cmd.Start(); err != nil {
 		return err
