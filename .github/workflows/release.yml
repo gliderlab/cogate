@@ -24,7 +24,7 @@ jobs:
         run: |
           apt-get update
           apt-get install -y build-essential pkg-config libsqlite3-dev \
-            libopenblas-dev liblapack-dev libgomp1 zip cmake git
+            libopenblas-dev liblapack-dev libgomp1 zip cmake git libgflags-dev
       - name: Build FAISS (source)
         run: |
           git clone --depth 1 https://github.com/facebookresearch/faiss.git
