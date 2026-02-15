@@ -63,21 +63,21 @@ jobs:
         with:
           go-version: '1.21'
       - name: Build (with FAISS support)
+        shell: msys2 {0}
         env:
           CGO_ENABLED: 1
           GOOS: windows
           GOARCH: amd64
-          PATH: ${{ env.MSYSTEM }}-x86_64/bin:/usr/bin:$PATH
         run: |
-          # Use MSYS2 Go for building with CGO support
-          export PATH="$MSYSTEM_PATH:$PATH"
+          set -e
           gcc --version
           go env
+          mkdir -p dist/windows
           # Build all components with FAISS and sqlite_fts5 support
-          go build -buildvcs=false -ldflags="-s -w -buildid=" -tags "faiss sqlite_fts5" -o dist\windows\ocg.exe .\cmd\ocg
-          go build -buildvcs=false -ldflags="-s -w -buildid=" -tags "sqlite_fts5" -o dist\windows\ocg-gateway.exe .\cmd\gateway
-          go build -buildvcs=false -ldflags="-s -w -buildid=" -tags "faiss sqlite_fts5" -o dist\windows\ocg-agent.exe .\cmd\agent
-          go build -buildvcs=false -ldflags="-s -w -buildid=" -o dist\windows\ocg-embedding.exe .\cmd\embedding-server
+          go build -buildvcs=false -ldflags="-s -w -buildid=" -tags "faiss sqlite_fts5" -o dist/windows/ocg.exe ./cmd/ocg
+          go build -buildvcs=false -ldflags="-s -w -buildid=" -tags "sqlite_fts5" -o dist/windows/ocg-gateway.exe ./cmd/gateway
+          go build -buildvcs=false -ldflags="-s -w -buildid=" -tags "faiss sqlite_fts5" -o dist/windows/ocg-agent.exe ./cmd/agent
+          go build -buildvcs=false -ldflags="-s -w -buildid=" -o dist/windows/ocg-embedding.exe ./cmd/embedding-server
       - name: Create Windows zip
         run: |
           Compress-Archive -Path dist\windows\* -DestinationPath dist\ocg-windows-x64.zip -Force
