@@ -58,7 +58,7 @@ jobs:
             mingw-w64-x86_64-openblas
             mingw-w64-x86_64-lapack
             mingw-w64-x86_64-make
-            mingw-w64-x86_64-git
+            git
       - name: Set up Go (native)
         uses: actions/setup-go@v5
         with:
