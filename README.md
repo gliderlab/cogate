@@ -137,6 +137,12 @@ A one-shot `deploy.sh` script is included for Debian/Ubuntu hosts. It installs b
 ./deploy.sh
 ```
 
+> Runtime note (Linux): If you use the FAISS build, install the OpenMP runtime:
+>
+> ```bash
+> sudo apt-get install -y libgomp1
+> ```
+
 ### Deploy Environment Variables
 
 | Variable | Default | Description |
