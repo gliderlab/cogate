@@ -11,6 +11,10 @@ jobs:
     container: debian:trixie
     steps:
       - uses: actions/checkout@v4
+      - name: Install CA certs (for setup-go)
+        run: |
+          apt-get update
+          apt-get install -y ca-certificates
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
