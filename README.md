@@ -41,6 +41,7 @@ make build-all
 
 ```bash
 # Start all services (ocg exits after everything is ready)
+# NOTE: Make sure the embedding model file exists (see EMBEDDING_MODEL_PATH)
 export OPENCLAW_UI_TOKEN=your_token
 ./bin/ocg start
 ```
@@ -121,6 +122,7 @@ OPENCLAW_DB_PATH=ocg.db
 
 # Embedding
 EMBEDDING_SERVER_URL=http://localhost:50001
+# Required: embedding model file must exist before starting ocg
 EMBEDDING_MODEL_PATH=/path/to/model.gguf
 ```
 
