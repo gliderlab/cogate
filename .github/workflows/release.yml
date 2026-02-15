@@ -14,10 +14,10 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: '1.21'
-      - name: Install deps (SQLite, toolchain)
+      - name: Install deps (SQLite, toolchain, zip)
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential pkg-config libsqlite3-dev
+          sudo apt-get install -y build-essential pkg-config libsqlite3-dev zip
       - name: Build (lite, no FAISS)
         run: |
           make build-lite
@@ -26,7 +26,7 @@ jobs:
       - name: Create Linux zip
         run: |
           cd dist/linux
-          powershell -Command "Compress-Archive -Path * -DestinationPath ../ocg-linux-x64.zip -Force"
+          zip -r ../ocg-linux-x64.zip *
           cd ..
           rm -rf linux
       - name: Upload Linux artifact
