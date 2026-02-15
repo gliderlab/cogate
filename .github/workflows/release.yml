@@ -31,6 +31,9 @@ jobs:
           cmake -S faiss -B faiss/build \
             -DFAISS_ENABLE_GPU=OFF \
             -DFAISS_ENABLE_PYTHON=OFF \
+            -DFAISS_ENABLE_TESTS=OFF \
+            -DFAISS_ENABLE_BENCHMARKS=OFF \
+            -DFAISS_ENABLE_PERF_TESTS=OFF \
             -DBUILD_SHARED_LIBS=OFF \
             -DBLA_VENDOR=OpenBLAS \
             -DCMAKE_BUILD_TYPE=Release \
