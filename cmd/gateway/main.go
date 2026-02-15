@@ -7,10 +7,7 @@ import (
 	"log"
 	"net/rpc"
 	"os"
-	"os/exec"
 	"os/signal"
-	"path/filepath"
-	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -79,28 +76,9 @@ func main() {
 		agentSock = "/tmp/ocg-agent.sock"
 	}
 
-	// 1) Start embedding service
-	embeddingCmd, embeddingHost, embeddingPort, err := startEmbeddingService()
-	if err != nil {
-		log.Printf("Failed to start embedding service: %v", err)
-	} else {
-		log.Printf("Embedding service started: %s:%s", embeddingHost, embeddingPort)
-		writeEnvConfig("env.config", map[string]string{
-			"EMBEDDING_SERVER_HOST": embeddingHost,
-			"EMBEDDING_SERVER_PORT": embeddingPort,
-			"EMBEDDING_SERVER_URL":  fmt.Sprintf("http://%s:%s", embeddingHost, embeddingPort),
-		})
-	}
-
-	// 2) Start Agent
-	agentCmd, err := startAgent(agentSock)
-	if err != nil {
-		log.Fatalf("Failed to start Agent: %v", err)
-	}
-
+	// 1) Connect to Agent (ocg-managed)
 	client, err := waitForAgent(agentSock, 20*time.Second)
 	if err != nil {
-		_ = agentCmd.Process.Kill()
 		log.Fatalf("Failed to connect to Agent: %v", err)
 	}
 
@@ -133,74 +111,7 @@ func main() {
 
 	log.Println("Gateway shutting down...")
 	srv.Stop()
-	if embeddingCmd != nil && embeddingCmd.Process != nil {
-		embeddingCmd.Process.Signal(syscall.SIGTERM)
-		embeddingCmd.Process.Kill()
-	}
-	_ = agentCmd.Process.Signal(syscall.SIGTERM)
-	_ = agentCmd.Process.Kill()
 	os.Exit(0)
-}
-
-func startEmbeddingService() (*exec.Cmd, string, string, error) {
-	exePath, _ := os.Executable()
-	binDir := filepath.Dir(exePath)
-	embeddingPath := filepath.Join(binDir, "ocg-embedding")
-
-	if _, err := os.Stat(embeddingPath); err != nil {
-		return nil, "", "", fmt.Errorf("ocg-embedding not found at %s", embeddingPath)
-	}
-
-	cmd := exec.Command(embeddingPath)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-
-	if err := cmd.Start(); err != nil {
-		return nil, "", "", err
-	}
-
-	// Wait for embedding server to update env.config
-	for i := 0; i < 30; i++ {
-		time.Sleep(time.Second)
-		cfg := readEnvConfig("env.config")
-		host := cfg["EMBEDDING_SERVER_HOST"]
-		port := cfg["EMBEDDING_SERVER_PORT"]
-		if port != "" {
-			if host == "" {
-				host = "0.0.0.0"
-			}
-			return cmd, host, port, nil
-		}
-	}
-
-	return cmd, "0.0.0.0", "unknown", nil
-}
-
-func startAgent(agentAddr string) (*exec.Cmd, error) {
-	exePath, err := os.Executable()
-	if err != nil {
-		return nil, err
-	}
-	binDir := filepath.Dir(exePath)
-	agentPath := filepath.Join(binDir, "ocg-agent")
-	if runtime.GOOS == "windows" {
-		agentPath += ".exe"
-	}
-
-	cmd := exec.Command(agentPath)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-
-	env := os.Environ()
-	env = append(env, "OPENCLAW_AGENT_SOCK="+agentAddr)
-	cmd.Env = env
-
-	if err := cmd.Start(); err != nil {
-		return nil, err
-	}
-
-	log.Printf("Started Agent: %s", agentPath)
-	return cmd, nil
 }
 
 func waitForAgent(addr string, timeout time.Duration) (*rpc.Client, error) {

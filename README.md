@@ -40,15 +40,9 @@ make build-all
 ### Run
 
 ```bash
-# Start embedding service
-./bin/ocg-embedding &
-
-# Start agent
-./bin/ocg-agent &
-
-# Start gateway
+# Start all services (ocg exits after everything is ready)
 export OPENCLAW_UI_TOKEN=your_token
-./bin/ocg-gateway
+./bin/ocg start
 ```
 
 ### Access
@@ -383,8 +377,8 @@ ChannelAdapter
 # Set bot token
 export TELEGRAM_BOT_TOKEN=your_bot_token
 
-# Start gateway
-./bin/ocg-gateway
+# Start all services
+./bin/ocg start
 ```
 
 ### Bot Commands
@@ -481,7 +475,7 @@ CREATE TABLE config (
 
 ```bash
 # Check logs
-tail -f /tmp/gateway.log
+tail -f /tmp/ocg/logs/gateway.log
 
 # Verify ports
 ss -ltn | grep -E "55003|50001|18000"
@@ -495,7 +489,7 @@ cp ocg.db ocg.db.backup
 
 # Reinitialize
 rm ocg.db
-./bin/ocg-agent
+./bin/ocg start
 ```
 
 ### Memory Search Not Working
