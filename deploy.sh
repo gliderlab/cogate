@@ -11,6 +11,7 @@ set -euo pipefail
 #   SWAP_SIZE    - swap size (default 4G)
 
 OCG_DIR="/opt/openclaw-go"
+OCG_REPO="https://github.com/gliderlab/cogate.git"
 LLAMA_REPO="https://github.com/ggml-org/llama.cpp.git"
 
 LLAMA_JOBS="${LLAMA_JOBS:-1}"
@@ -46,7 +47,7 @@ apt-get install -y \
 if [ -d "$OCG_DIR" ]; then
   mv "$OCG_DIR" "${OCG_DIR}.bak.$(date +%s)"
 fi
-git clone https://github.com/openclaw/openclaw-go.git "$OCG_DIR"
+git clone "$OCG_REPO" "$OCG_DIR"
 cd "$OCG_DIR"
 rm -rf llama.cpp
 git clone "$LLAMA_REPO" llama.cpp
