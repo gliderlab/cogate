@@ -46,53 +46,20 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Setup MSYS2 (for CGO and FAISS support)
-        uses: msys2/setup-msys2@v2
-        with:
-          msystem: MINGW64
-          install: >-
-            base-devel
-            mingw-w64-x86_64-gcc
-            mingw-w64-x86_64-cmake
-            mingw-w64-x86_64-go
-            mingw-w64-x86_64-openblas
-            mingw-w64-x86_64-lapack
-            mingw-w64-x86_64-make
-            git
       - name: Set up Go (native)
         uses: actions/setup-go@v5
         with:
           go-version: '1.21'
-      - name: Build FAISS (MSYS2)
-        shell: msys2 {0}
-        run: |
-          set -e
-          git clone --depth 1 https://github.com/facebookresearch/faiss.git
-          cmake -S faiss -B faiss/build \
-            -DFAISS_ENABLE_GPU=OFF \
-            -DFAISS_ENABLE_PYTHON=OFF \
-            -DBUILD_SHARED_LIBS=OFF \
-            -DBLA_VENDOR=OpenBLAS \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_INSTALL_PREFIX=/mingw64
-          cmake --build faiss/build --config Release -- -j2
-          cmake --install faiss/build
-      - name: Build (with FAISS support)
-        shell: msys2 {0}
+      - name: Build (lite, no FAISS)
         env:
-          CGO_ENABLED: 1
+          CGO_ENABLED: 0
           GOOS: windows
           GOARCH: amd64
         run: |
-          set -e
-          gcc --version
-          go env
-          mkdir -p dist/windows
-          # Build all components with FAISS and sqlite_fts5 support
-          go build -buildvcs=false -ldflags="-s -w -buildid=" -tags "faiss sqlite_fts5" -o dist/windows/ocg.exe ./cmd/ocg
-          go build -buildvcs=false -ldflags="-s -w -buildid=" -tags "sqlite_fts5" -o dist/windows/ocg-gateway.exe ./cmd/gateway
-          go build -buildvcs=false -ldflags="-s -w -buildid=" -tags "faiss sqlite_fts5" -o dist/windows/ocg-agent.exe ./cmd/agent
-          go build -buildvcs=false -ldflags="-s -w -buildid=" -o dist/windows/ocg-embedding.exe ./cmd/embedding-server
+          go build -buildvcs=false -ldflags="-s -w -buildid=" -o dist\windows\ocg.exe .\cmd\ocg
+          go build -buildvcs=false -ldflags="-s -w -buildid=" -o dist\windows\ocg-gateway.exe .\cmd\gateway
+          go build -buildvcs=false -ldflags="-s -w -buildid=" -tags "sqlite_fts5" -o dist\windows\ocg-agent.exe .\cmd\agent
+          go build -buildvcs=false -ldflags="-s -w -buildid=" -o dist\windows\ocg-embedding.exe .\cmd\embedding-server
       - name: Create Windows zip
         run: |
           Compress-Archive -Path dist\windows\* -DestinationPath dist\ocg-windows-x64.zip -Force
