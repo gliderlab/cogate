@@ -424,20 +424,20 @@
       hideTyping();
       
       if (msg.type === 'done') {
-        const data = msg.content ? JSON.parse(msg.content) : {};
+        const data = typeof msg.content === 'string' ? JSON.parse(msg.content) : (msg.content || {});
         const reply = data.content || strings[currentLang].noReply;
         addMessage('assistant', reply);
         messages.push({ role: 'assistant', content: reply });
         sendBtn.disabled = false;
         inputEl.focus();
       } else if (msg.type === 'error') {
-        const data = msg.content ? JSON.parse(msg.content) : {};
+        const data = typeof msg.content === 'string' ? JSON.parse(msg.content) : (msg.content || {});
         addMessage('assistant', `${strings[currentLang].error}: ${data.error || 'unknown'}`);
         sendBtn.disabled = false;
         inputEl.focus();
       } else if (msg.type === 'chunk') {
         // For future streaming support
-        const data = msg.content ? JSON.parse(msg.content) : {};
+        const data = typeof msg.content === 'string' ? JSON.parse(msg.content) : (msg.content || {});
         // Append chunk to last message or create new
       }
     }
